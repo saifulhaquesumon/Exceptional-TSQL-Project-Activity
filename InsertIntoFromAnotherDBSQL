@@ -3,7 +3,8 @@ declare
 @v_insert varchar(MAX),
 @v_table varchar(MAX),
 @v_columns varchar(MAX),
-@v_sourceDb varchar(500)
+@v_sourceDb varchar(500),
+@haveIdentityColumn int
 begin
 
 DECLARE CURSOR_EACHTABLE CURSOR 
@@ -12,8 +13,8 @@ FOR
 select '[dbo].['+[name]+']' as tableName from sys.tables order by [name]
 
 
-set @v_sourceDb='[DB_ERP_SHURUCHI_NV]'
-PRINT '--------------------Auto generation started -------------------------'
+set @v_sourceDb='[DB_FROM]'
+PRINT '----------Auto generation started -------------------------'
 
 
 
@@ -22,29 +23,54 @@ FETCH NEXT FROM CURSOR_EACHTABLE INTO @v_table
 WHILE @@FETCH_STATUS = 0
 BEGIN 
 
+--set @v_table='[dbo].[Acc_Bank]'
+--select * from sys.tables order by [name]
+--SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('[dbo].[Acc_Bank]') order by column_id
+
 SELECT @v_columns= STRING_AGG([name], ',') WITHIN GROUP (ORDER BY column_id) 
   FROM sys.columns
-WHERE object_id = OBJECT_ID(@v_table)
+WHERE object_id = OBJECT_ID(@v_table) and is_computed<>1
  GROUP BY object_id
  ORDER BY object_id;
 
-set @v_insert='  
-SET IDENTITY_INSERT '+@v_table+' ON 
+SELECT @haveIdentityColumn=count(*)
+  FROM sys.columns
+WHERE object_id = OBJECT_ID(@v_table) and is_identity=1
+ GROUP BY object_id
+ ORDER BY object_id;
+
+set @v_insert='
 GO
+'
+
+if @haveIdentityColumn>0 
+begin
+	set @v_insert=@v_insert+'SET IDENTITY_INSERT '+@v_table+' ON 
+	GO'
+end
+
+set @v_insert = @v_insert+' 
+
 INSERT into '+@v_table+' 
 ('+ @v_columns +
 ') 
  SELECT '+ @v_columns +' FROM '+@v_sourceDb+'.'+@v_table+'
- GO 
- SET IDENTITY_INSERT '+@v_table+' OFF 
- GO
- ' 
+  GO
+  
+'
+
+if @haveIdentityColumn>0 
+begin
+	set @v_insert=@v_insert+'SET IDENTITY_INSERT '+@v_table+' OFF 
+	GO' 
+end
+ 
 print @v_insert
 FETCH NEXT FROM CURSOR_EACHTABLE INTO @v_table
 END
 CLOSE CURSOR_EACHTABLE
 DEALLOCATE CURSOR_EACHTABLE
 
-PRINT '-------------------THE END -------------------------'
+PRINT '----------THE END -------------------------'
 
 end
