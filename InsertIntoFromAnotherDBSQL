@@ -1,0 +1,50 @@
+
+declare 
+@v_insert varchar(MAX),
+@v_table varchar(MAX),
+@v_columns varchar(MAX),
+@v_sourceDb varchar(500)
+begin
+
+DECLARE CURSOR_EACHTABLE CURSOR 
+  LOCAL STATIC READ_ONLY FORWARD_ONLY
+FOR 
+select '[dbo].['+[name]+']' as tableName from sys.tables order by [name]
+
+
+set @v_sourceDb='[DB_ERP_SHURUCHI_NV]'
+PRINT '--------------------Auto generation started -------------------------'
+
+
+
+OPEN CURSOR_EACHTABLE
+FETCH NEXT FROM CURSOR_EACHTABLE INTO @v_table
+WHILE @@FETCH_STATUS = 0
+BEGIN 
+
+SELECT @v_columns= STRING_AGG([name], ',') WITHIN GROUP (ORDER BY column_id) 
+  FROM sys.columns
+WHERE object_id = OBJECT_ID(@v_table)
+ GROUP BY object_id
+ ORDER BY object_id;
+
+set @v_insert='  
+SET IDENTITY_INSERT '+@v_table+' ON 
+GO
+INSERT into '+@v_table+' 
+('+ @v_columns +
+') 
+ SELECT '+ @v_columns +' FROM '+@v_sourceDb+'.'+@v_table+'
+ GO 
+ SET IDENTITY_INSERT '+@v_table+' OFF 
+ GO
+ ' 
+print @v_insert
+FETCH NEXT FROM CURSOR_EACHTABLE INTO @v_table
+END
+CLOSE CURSOR_EACHTABLE
+DEALLOCATE CURSOR_EACHTABLE
+
+PRINT '-------------------THE END -------------------------'
+
+end
