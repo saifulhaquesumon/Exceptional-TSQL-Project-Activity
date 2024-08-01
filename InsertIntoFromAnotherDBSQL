@@ -23,9 +23,6 @@ FETCH NEXT FROM CURSOR_EACHTABLE INTO @v_table
 WHILE @@FETCH_STATUS = 0
 BEGIN 
 
---set @v_table='[dbo].[Acc_Bank]'
---select * from sys.tables order by [name]
---SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('[dbo].[Acc_Bank]') order by column_id
 
 SELECT @v_columns= STRING_AGG([name], ',') WITHIN GROUP (ORDER BY column_id) 
   FROM sys.columns
@@ -35,9 +32,7 @@ WHERE object_id = OBJECT_ID(@v_table) and is_computed<>1
 
 SELECT @haveIdentityColumn=count(*)
   FROM sys.columns
-WHERE object_id = OBJECT_ID(@v_table) and is_identity=1
- GROUP BY object_id
- ORDER BY object_id;
+WHERE object_id = OBJECT_ID(@v_table) and is_identity=1;
 
 set @v_insert='
 GO
